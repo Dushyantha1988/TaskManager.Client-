@@ -1,0 +1,247 @@
+<div class="tasks-page">
+  <header class="top-bar">
+    <div class="brand-row">
+      <div class="app-logo">✓</div>
+      <div>
+        <h1>Task Manager</h1>
+        <p>Hello, <strong>{{ username }}</strong></p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="user-avatar" [title]="username ?? ''">{{ userInitials }}</div>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-value">{{ tasks.length }}</span>
+      <span class="stat-label">Total tasks</span>
+    </div>
+    <div class="stat-card stat-pending">
+      <span class="stat-value">{{ pendingCount }}</span>
+      <span class="stat-label">Pending</span>
+    </div>
+    <div class="stat-card stat-done">
+      <span class="stat-value">{{ completedCount }}</span>
+      <span class="stat-label">Completed</span>
+    </div>
+  </div>
+
+  <div *ngIf="message" class="alert toast" [class.alert-success]="messageType === 'success'" [class.alert-error]="messageType === 'error'">
+    <span>{{ messageType === 'success' ? '✓' : '!' }}</span>
+    {{ message }}
+    <button type="button" class="toast-close" (click)="message = ''">×</button>
+  </div>
+
+  <div class="workspace">
+    <section class="panel list-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Your Tasks</h2>
+          <p class="panel-subtitle">Click a task to edit, or create a new one</p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" (click)="openNewTaskModal()">
+          + New Task
+        </button>
+      </div>
+
+      <form class="filters" [formGroup]="filterForm" (ngSubmit)="loadTasks()">
+        <div class="search-box">
+          <span class="search-icon">⌕</span>
+          <input type="search" formControlName="search" placeholder="Search by title or description..." />
+        </div>
+
+        <div class="filter-row">
+          <select formControlName="status" aria-label="Filter by status">
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+          </select>
+
+          <select formControlName="priority" aria-label="Filter by priority">
+            <option value="all">All priorities</option>
+            <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+          </select>
+
+          <select formControlName="sortBy" aria-label="Sort by">
+            <option *ngFor="let option of sortOptions" [value]="option.value">{{ option.label }}</option>
+          </select>
+
+          <select formControlName="sortDirection" aria-label="Sort direction">
+            <option value="desc">Newest first</option>
+            <option value="asc">Oldest first</option>
+          </select>
+
+          <button type="submit" class="btn btn-secondary btn-sm">Apply filters</button>
+        </div>
+      </form>
+
+      <div class="task-list" *ngIf="!isLoading; else loading">
+        <article
+          class="task-card"
+          *ngFor="let task of tasks"
+          [class.selected]="selectedTask?.id === task.id"
+          [class.completed]="task.isCompleted"
+          (click)="selectTask(task)">
+          <div class="task-card-top">
+            <span class="status-dot" [class.done]="task.isCompleted"></span>
+            <div class="task-card-header">
+              <h3 [class.strikethrough]="task.isCompleted">{{ task.title }}</h3>
+              <span class="badge" [ngClass]="priorityClass(task.priority)">{{ task.priority }}</span>
+            </div>
+          </div>
+
+          <p class="task-desc" *ngIf="task.description">{{ task.description }}</p>
+
+          <div class="task-meta">
+            <span class="meta-chip" [class.meta-done]="task.isCompleted">
+              {{ task.isCompleted ? '✓ Done' : '○ Pending' }}
+            </span>
+            <span class="meta-chip meta-due" *ngIf="task.dueDate" [class.overdue]="isOverdue(task)">
+              📅 {{ task.dueDate | date:'MMM d, y' }}
+              <span *ngIf="isOverdue(task)"> · Overdue</span>
+            </span>
+          </div>
+
+          <div class="task-actions">
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              *ngIf="!task.isCompleted"
+              (click)="markComplete(task, $event)">
+              ✓ Complete
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" (click)="deleteTask(task, $event)">Delete</button>
+          </div>
+        </article>
+
+        <div class="empty-state" *ngIf="tasks.length === 0">
+          <div class="empty-icon">📋</div>
+          <h3>No tasks yet</h3>
+          <p>Create your first task to get started.</p>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openNewTaskModal()">Create a task</button>
+        </div>
+      </div>
+
+      <ng-template #loading>
+        <div class="loading-state">
+          <div class="loader"></div>
+          <p>Loading your tasks...</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <section class="panel form-panel">
+      <ng-container *ngIf="selectedTask; else noSelection">
+        <div class="panel-header">
+          <div>
+            <h2>Edit Task</h2>
+            <p class="panel-subtitle">Update details and save changes</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="clearSelection()">Close</button>
+        </div>
+
+        <form [formGroup]="taskForm" (ngSubmit)="saveTask()" class="task-form">
+          <label>
+            <span class="label-text">Title <em>*</em></span>
+            <input type="text" formControlName="title" placeholder="What needs to be done?" />
+            <span class="field-error" *ngIf="taskForm.controls.title.touched && taskForm.controls.title.invalid">
+              Title is required (max 200 characters).
+            </span>
+          </label>
+
+          <label>
+            <span class="label-text">Description</span>
+            <textarea formControlName="description" rows="4" placeholder="Add more details (optional)"></textarea>
+          </label>
+
+          <div class="form-row">
+            <label>
+              <span class="label-text">Priority</span>
+              <select formControlName="priority">
+                <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+              </select>
+            </label>
+
+            <label>
+              <span class="label-text">Due date</span>
+              <input type="date" formControlName="dueDate" />
+            </label>
+          </div>
+
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="isCompleted" />
+            <span>Mark as completed</span>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+              <span *ngIf="isSaving" class="spinner dark"></span>
+              {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </form>
+      </ng-container>
+
+      <ng-template #noSelection>
+        <div class="edit-placeholder">
+          <div class="placeholder-icon">✎</div>
+          <h3>Select a task to edit</h3>
+          <p>Choose a task from the list, or create a new one.</p>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openNewTaskModal()">+ New Task</button>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+</div>
+
+<!-- New Task Modal -->
+<div class="modal-backdrop" *ngIf="showNewTaskModal" (click)="closeNewTaskModal()">
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="newTaskTitle" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2 id="newTaskTitle">Create New Task</h2>
+        <p>Add a new task to your list</p>
+      </div>
+      <button type="button" class="modal-close" (click)="closeNewTaskModal()" aria-label="Close">×</button>
+    </div>
+
+    <form [formGroup]="newTaskForm" (ngSubmit)="createTask()" class="task-form">
+      <label>
+        <span class="label-text">Title <em>*</em></span>
+        <input type="text" formControlName="title" placeholder="What needs to be done?" autofocus />
+        <span class="field-error" *ngIf="newTaskForm.controls.title.touched && newTaskForm.controls.title.invalid">
+          Title is required (max 200 characters).
+        </span>
+      </label>
+
+      <label>
+        <span class="label-text">Description</span>
+        <textarea formControlName="description" rows="3" placeholder="Add more details (optional)"></textarea>
+      </label>
+
+      <div class="form-row">
+        <label>
+          <span class="label-text">Priority</span>
+          <select formControlName="priority">
+            <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="label-text">Due date</span>
+          <input type="date" formControlName="dueDate" />
+        </label>
+      </div>
+
+      <div class="form-actions modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeNewTaskModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+          <span *ngIf="isSaving" class="spinner"></span>
+          {{ isSaving ? 'Creating...' : 'Create Task' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

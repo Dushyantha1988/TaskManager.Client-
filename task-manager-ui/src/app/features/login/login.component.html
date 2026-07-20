@@ -1,0 +1,66 @@
+<div class="login-page">
+  <div class="login-brand">
+    <div class="brand-content">
+      <div class="brand-icon">✓</div>
+      <h1>Task Manager</h1>
+      <p>Organize your work, track progress, and stay productive — all in one place.</p>
+      <ul class="brand-features">
+        <li>Side-by-side task editing</li>
+        <li>Smart search & filters</li>
+        <li>Secure JWT authentication</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="login-form-side">
+    <div class="login-card">
+      <header class="login-header">
+        <h2>{{ isRegisterMode ? 'Create account' : 'Welcome back' }}</h2>
+        <p>{{ isRegisterMode ? 'Sign up to start managing tasks' : 'Sign in to continue to your tasks' }}</p>
+      </header>
+
+      <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-error]="messageType === 'error'">
+        <span>{{ messageType === 'success' ? '✓' : '!' }}</span>
+        {{ message }}
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <label>
+          <span class="label-text">Username</span>
+          <input type="text" formControlName="username" autocomplete="username" placeholder="e.g. Dushyantha" />
+          <span class="field-error" *ngIf="form.controls.username.touched && form.controls.username.invalid">
+            Username is required (3–50 characters).
+          </span>
+        </label>
+
+        <label>
+          <span class="label-text">Password</span>
+          <input type="password" formControlName="password" autocomplete="current-password" placeholder="Enter your password" />
+          <span class="field-error" *ngIf="form.controls.password.touched && form.controls.password.invalid">
+            Password is required (minimum 6 characters).
+          </span>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-full" [disabled]="isSubmitting">
+          <span *ngIf="isSubmitting" class="spinner"></span>
+          {{ isSubmitting ? 'Please wait...' : (isRegisterMode ? 'Create Account' : 'Sign In') }}
+        </button>
+      </form>
+
+      <footer class="login-footer">
+        <button type="button" class="link-btn" (click)="toggleMode()">
+          {{ isRegisterMode ? 'Already have an account? Sign in' : "Don't have an account? Register" }}
+        </button>
+
+        <div class="demo-card" *ngIf="!isRegisterMode">
+          <span class="demo-label">Default account</span>
+          <div class="demo-credentials">
+            <code>Dushyantha</code>
+            <span>/</span>
+            <code>Dushyatha@soft@987#</code>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+</div>
