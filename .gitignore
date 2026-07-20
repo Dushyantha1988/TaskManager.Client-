@@ -26,3 +26,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.vsidx
+/.vs/task-manager-ui.slnx/config
+/.vs/task-manager-ui.slnx/v18
